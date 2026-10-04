@@ -403,6 +403,7 @@ def main():
 
     clock = pg.time.Clock()
     running = True
+    game_over_start_time = -1
 
     init_sprites()
 
@@ -447,6 +448,7 @@ def main():
                         game_state = "playing"
                 # on click, get the cords of the tile that was clicked
                 elif game_state == "playing":
+                    assert board is not None
                     LEFT_CLICK = 1
                     RIGHT_CLICK = 3
                     if (event.button == LEFT_CLICK or event.button == RIGHT_CLICK):
@@ -492,7 +494,6 @@ def main():
 
         # during gameover, display everything minus the cursor, and plus the blinking game over panel
         elif game_state == "game_over":
-
             # draw background
             screen.blit(sprites[Sprite.BACKGROUND], (0,0))
 

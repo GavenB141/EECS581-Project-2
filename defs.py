@@ -74,4 +74,4 @@ class Board():
         self.flags_remaining = mines 
         self.num_revealed = 0
         self.mines = mines
-        self.clicked_mine = None
+        self.clicked_mine: Tile | None = None
