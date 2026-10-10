@@ -78,7 +78,37 @@ class AISolver:
     # the AI should flag all hidden neighbors. Second, if the number of flagged neighbors of a revealed cell equals that cell’s number, 
     # the AI should open all other hidden neighbors. If no rule applies, the AI should pick a random hidden cell.
     def run_medium(self, board: Board):
-        return # TODO
+        if board.is_game_lost or board.is_game_won:
+            return
+
+        if board.num_revealed == 0:
+            self.select_random(board)
+
+        for row in range(10):
+            for col in range(10):
+                tile = board.tiles[row][col]
+                if not tile.is_revealed or tile.value < 1 or tile.value > 8:
+                    continue
+                neighbors = get_surrounding_tiles(tile, board)
+                flagged = [neighbor for neighbor in neighbors if neighbor.is_flagged]
+                hidden = [neighbor for neighbor in neighbors if not neighbor.is_revealed and not neighbor.is_flagged]
+
+                if hidden and len(flagged) + len(hidden) == tile.value:
+                    for neighbor in hidden:
+                        right_click_tile(neighbor, board)
+                        if board.is_game_lost or board.is_game_won:
+                            return
+                    return
+
+                if hidden and len(flagged) == tile.value:
+                    for neighbor in hidden:
+                        left_click_tile(neighbor,board)
+                        if board.is_game_lost or board.is_game_won:
+                            return     
+                    return
+        self.select_random(board)
+                    
+
 
     # HARD: The computer applies all the rules from the Medium level, plus the 1-2-1 pattern rule. If three side-by-side revealed cells show “1-2-1,” 
     # the AI can logically deduce that the two outer hidden neighbors are mines (and should be flagged), while the inner hidden neighbor is safe (and should be opened). 
