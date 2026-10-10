@@ -36,6 +36,55 @@ class AISolver:
         self._delay -= 1
         if self._delay != 0:
             return False
+        # takes the next turn with the chosen strength level
+        if self.strength == AIStrength.EASY:
+            self.run_easy(board)
+        elif self.strength == AIStrength.MEDIUM:
+            self.run_medium(board)
+        elif self.strength == AIStrength.HARD:
+            self.run_hard(board)
+        return True
+
+    # returns every tile that is still hidden and not flagged so the AI knows what it can actually select
+    def get_hidden(self, board: Board) -> list[Tile]:
+        hidden = []
+        for row in range(10): # need to come back and change range for row and col to be adjustable to changing board size once implemented
+            for col in range(10):
+                tile = board.tiles[row][col]
+                if not tile.is_revealed and not tile.is_flagged:
+                    hidden.append(tile)
+        return hidden
+
+    # allows the AI to select a random tile that is hidden
+    # essential for every AI level, therefore I'm implementing as a seperate function
+    def select_random(self, board: Board):
+        if board.is_game_lost or board.is_game_won: 
+            return
+        available = self.get_hidden(board) # list of what can be used
+        if not available:
+            return
+        tile = random.choice(available)
+        # mines aren't placed until after the first click, so it makes sure to run that function so the board isn't blank
+        if board.num_revealed == 0:
+            first_click(tile, board)
+        else:
+            left_click_tile(tile, board)
+
+    # Easy: uncovers a random cell, not including any flagged or already uncovered cells.
+    def run_easy(self, board: Board):
+        self.select_random(board)
+
+    # Medium: The computer applies two basic rules. First, if the number of hidden neighbors of a revealed cell equals that cell’s number, 
+    # the AI should flag all hidden neighbors. Second, if the number of flagged neighbors of a revealed cell equals that cell’s number, 
+    # the AI should open all other hidden neighbors. If no rule applies, the AI should pick a random hidden cell.
+    def run_medium(self, board: Board):
+        return # TODO
+
+    # HARD: The computer applies all the rules from the Medium level, plus the 1-2-1 pattern rule. If three side-by-side revealed cells show “1-2-1,” 
+    # the AI can logically deduce that the two outer hidden neighbors are mines (and should be flagged), while the inner hidden neighbor is safe (and should be opened). 
+    # If no rule applies, the AI should fall back to a random click.
+    def run_hard(self, board: Board):
+        return # TODO
 
         # TODO: run the appropriate solving algorithm and return True when finished.
         # it may be desirable to have solver algorithms run over multiple ticks
