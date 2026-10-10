@@ -56,3 +56,9 @@ Provides a high-level structural overview of the project architecture to assist 
 1. Fixed 10x10 grid of tiles
 2. 10-20 mines (user-specified)
 3. First-clicked tile as well as its adjacent tiles cannot be mines
+
+## Project 2 settings menu
+
+Anthony's settings implementation and integration notes are in
+[documentation/settings-menu.md](documentation/settings-menu.md).
+Run `python3 -m unittest discover -s tests -v` for regression checks.

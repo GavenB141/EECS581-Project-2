@@ -3,28 +3,14 @@
 import pygame as pg
 from defs import *
 from backend import *
+from pathlib import Path
+from settings import GameSettings
+import settings_menu
 
 
 SCALE = 4
 SCREEN_WIDTH = 192 # ten 16px tiles + four 8px tiles = 192
 SCREEN_HEIGHT = 232 # ten 16px tiles + nine 8px tiles = 232
-
-# top-left position to draw the start screen panel in center of screen
-PANEL_X = (SCREEN_WIDTH - 176) // 2
-PANEL_Y = (SCREEN_HEIGHT - 216) // 2
-
-# labeling postitions and sizes for each respective start screen interactive asset
-NUMBER_GAP_POS = (93, 83)
-NUMBER_GAP_SIZE = (16, 8)
-
-UP_ARROW_POS = (111, 83)
-UP_ARROW_SIZE = (8, 8)
-
-DOWN_ARROW_POS = (120, 83)
-DOWN_ARROW_SIZE = (8, 8)
-
-START_BUTTON_POS = (44, 136)
-START_BUTTON_SIZE = (88, 24)
 
 # game over panel constants
 GAME_OVER_SOURCE_RECT = pg.Rect(250, 814, 498, 320)
@@ -59,8 +45,8 @@ screen = pg.display.set_mode((SCALE * SCREEN_WIDTH, SCALE * SCREEN_HEIGHT))
 # which screen is currently active between menu or playing
 game_state = "menu"
 
-# mine count chosen on the start menu (=<20, >=10)
-selected_mines = 20
+# Menu choices persist when returning from a finished game.
+selected_settings = GameSettings()
 
 # Function written by John Rader
 # return a pg surface scaled by SCALE
@@ -100,7 +86,7 @@ def get_clicked_tile(mouse_pos):
     y -= 56
 
     # if the click is outside of the board, return None
-    if (x < 0 or y < 0 or x >= 160 or y >=160):
+    if (x < 0 or y < 0 or x >= SCREEN_WIDTH - 32 or y >= SCREEN_HEIGHT - 72):
         return None
 
     # convert to tile coords
@@ -120,7 +106,7 @@ def init_sprites():
     dest = (0,0)
 
     # load entire sprite sheet
-    sprite_sheet = pg.image.load("./assets/minesweeper_sheet.png")
+    sprite_sheet = pg.image.load(str(Path(__file__).parent / "assets/minesweeper_sheet.png"))
 
     # special sized sprites
     # background is 192x232px
@@ -134,7 +120,7 @@ def init_sprites():
     sprites[Sprite.BACKGROUND] = bg_surf
 
     # load start screen panel
-    start_screen_sheet = pg.image.load("./assets/start_screen.png")
+    start_screen_sheet = pg.image.load(str(Path(__file__).parent / "assets/start_screen.png"))
 
     panel_surf = pg.Surface((176,216))
     panel_sheet_location = (9, 85, 176, 216)
@@ -211,7 +197,7 @@ def init_sprites():
         save_sprites_from_sheet(name, abs_pos, pos, offset, size, sprite_sheet)
 
     # load game over panel
-    game_over_sheet = pg.image.load("./assets/game_over_sheet.png").convert_alpha()
+    game_over_sheet = pg.image.load(str(Path(__file__).parent / "assets/game_over_sheet.png")).convert_alpha()
 
     # save game over panel as a sprite
     save_sprites_from_sheet(Sprite.GAME_OVER, GAME_OVER_SOURCE_RECT.topleft, (0, 0), (0, 0), GAME_OVER_SOURCE_RECT.size, game_over_sheet, native_size=GAME_OVER_SIZE)
@@ -228,7 +214,8 @@ def draw_flags_left_numbers(board):
     # ones_sprite = sprites[Sprite.RED_ZERO]
     
     # screen starts at (1,77) on the sprite sheet so subtract that offset
-    locations = [(tens_sprite, [144 - 1, 109 - 77]), (ones_sprite, [152 - 1, 109 - 77])]
+    locations = [(tens_sprite, [SCREEN_WIDTH - 49, 32]),
+                 (ones_sprite, [SCREEN_WIDTH - 41, 32])]
     for surf, tile_coord in locations:
         # scale
         tile_coord[0] *= SCALE
@@ -257,35 +244,41 @@ def draw_status(board):
 
     screen.blit(surf, tile_coord)
 
-# Function written by Evan Noeth
-# draw the start menu (the panel graphic plus the live mine count)
 def draw_start_menu():
-    panel_surf = sprites[Sprite.START_PANEL.value]
-    screen.blit(panel_surf, (PANEL_X * SCALE, PANEL_Y * SCALE))
+    settings_menu.draw(screen, selected_settings)
 
-    draw_mine_count()
 
-# Function written by Evan Noeth
-# Date Created 9/19/2026
-# draw the two-digit mine count into the number gap on the start menu panel
-def draw_mine_count():
-    tens_digit = selected_mines // 10
-    ones_digit = selected_mines % 10
-    # the sprites are 20 to 29, for zero to nine
-    tens_sprite = sprites[tens_digit + 20]
-    ones_sprite = sprites[ones_digit + 20]
+def configure_display(size=10):
+    """Resize the board area and overlay hit boxes together for each new game."""
+    global screen, SCREEN_WIDTH, SCREEN_HEIGHT, GAME_OVER_RECT, MENU_BUTTON_RECT
+    SCREEN_WIDTH = size * 16 + 32
+    SCREEN_HEIGHT = size * 16 + 72
+    screen = pg.display.set_mode((SCREEN_WIDTH * SCALE, SCREEN_HEIGHT * SCALE))
+    GAME_OVER_RECT.topleft = (
+        (SCREEN_WIDTH - GAME_OVER_SIZE[0]) // 2 * SCALE,
+        ((SCREEN_HEIGHT - GAME_OVER_SIZE[1]) // 2 + 20) * SCALE)
+    MENU_BUTTON_RECT.topleft = (
+        GAME_OVER_RECT.x + MENU_BUTTON_RELATIVE_POS[0] * SCALE,
+        GAME_OVER_RECT.y + MENU_BUTTON_RELATIVE_POS[1] * SCALE)
 
-    # NUMBER_GAP_POS is local to panels top left corner, each digit is 8px wide unscaled
-    tens_pos = ((PANEL_X + NUMBER_GAP_POS[0]) * SCALE, (PANEL_Y + NUMBER_GAP_POS[1]) * SCALE)
-    ones_pos = ((PANEL_X + NUMBER_GAP_POS[0] + 8) * SCALE, (PANEL_Y + NUMBER_GAP_POS[1]) * SCALE)
 
-    screen.blit(tens_sprite, tens_pos)
-    screen.blit(ones_sprite, ones_pos)
+def draw_background():
+    # Draw a size-aware frame so the old fixed-grid artwork is never stretched.
+    screen.fill((0, 0, 0))
+    pg.draw.rect(screen, (180, 180, 180),
+                 pg.Rect(8 * SCALE, 8 * SCALE,
+                         (SCREEN_WIDTH - 16) * SCALE, (SCREEN_HEIGHT - 16) * SCALE))
+    pg.draw.rect(screen, (0, 0, 0),
+                 pg.Rect(16 * SCALE, 16 * SCALE, (SCREEN_WIDTH - 32) * SCALE, 32 * SCALE))
+    font = pg.font.Font(None, 8 * SCALE)
+    for label, x in (("STATUS", 31), ("FLAGS", SCREEN_WIDTH - 49)):
+        screen.blit(font.render(label, True, (255, 255, 255)), (x * SCALE, 18 * SCALE))
+
 
 # draw from given board
 def draw_board(board):
-    for r in range(10):
-        for c in range(10):
+    for r in range(board.rows):
+        for c in range(board.cols):
             tile = board.tiles[r][c]
 
             sprite_to_draw = Sprite.VERITY_DEAD # if this gets drawn then check for error
@@ -382,7 +375,7 @@ def draw_face(board):
         face = Sprite.VERITY_SMILE
 
     # draw face image to screen
-    screen.blit(sprites[face.value], (FACE_POS[0] * SCALE, FACE_POS[1] * SCALE))
+    screen.blit(sprites[face.value], ((SCREEN_WIDTH // 2 - 8) * SCALE, FACE_POS[1] * SCALE))
 
 
 # helper function for drawing game over panel when the game ends
@@ -399,7 +392,7 @@ def main():
     pg.init()
 
     # updates the non local vars instead of making new local ones
-    global game_state, selected_mines
+    global game_state, selected_settings
 
     clock = pg.time.Clock()
     running = True
@@ -420,31 +413,19 @@ def main():
             # on click, handle it differently depending on which screen is active
             elif event.type == pg.MOUSEBUTTONDOWN:
                 if(game_state == "game_over"):
-                    mouse_pos = pg.mouse.get_pos()
+                    mouse_pos = event.pos
 
                     if(event.button == 1 and MENU_BUTTON_RECT.collidepoint(mouse_pos)):
                         game_state = "menu"
+                        configure_display()
 
-                # on click, up/down arrow/start button positions are measured relative to the panel (the graphics own top left corner in unscaled asset, not screen)
-                # then everything scaled by SCALE like draw_to_tile
                 elif game_state == "menu":
-                    mouse_pos = pg.mouse.get_pos()
-
-                    up_arrow_rect = pg.Rect((PANEL_X + UP_ARROW_POS[0]) * SCALE, (PANEL_Y + UP_ARROW_POS[1]) * SCALE,
-                                             UP_ARROW_SIZE[0] * SCALE, UP_ARROW_SIZE[1] * SCALE)
-                    down_arrow_rect = pg.Rect((PANEL_X + DOWN_ARROW_POS[0]) * SCALE, (PANEL_Y + DOWN_ARROW_POS[1]) * SCALE,
-                                               DOWN_ARROW_SIZE[0] * SCALE, DOWN_ARROW_SIZE[1] * SCALE)
-                    start_button_rect = pg.Rect((PANEL_X + START_BUTTON_POS[0]) * SCALE, (PANEL_Y + START_BUTTON_POS[1]) * SCALE,
-                                                 START_BUTTON_SIZE[0] * SCALE, START_BUTTON_SIZE[1] * SCALE)
-
-                    if up_arrow_rect.collidepoint(mouse_pos):
-                        selected_mines = min(20, selected_mines + 1)
-                    elif down_arrow_rect.collidepoint(mouse_pos):
-                        selected_mines = max(10, selected_mines - 1)
-                    elif start_button_rect.collidepoint(mouse_pos):
-                        board = Board(selected_mines)
-                        # test with user amount of bombs
-
+                    selected_settings, start_requested = settings_menu.handle_event(
+                        event, selected_settings, screen)
+                    if start_requested:
+                        board = selected_settings.create_board()
+                        configure_display(board.rows)
+                        game_over_start_time = -1
                         game_state = "playing"
                 # on click, get the cords of the tile that was clicked
                 elif game_state == "playing":
@@ -452,7 +433,7 @@ def main():
                     LEFT_CLICK = 1
                     RIGHT_CLICK = 3
                     if (event.button == LEFT_CLICK or event.button == RIGHT_CLICK):
-                        mouse_pos = pg.mouse.get_pos()
+                        mouse_pos = event.pos
                         tile_coords = get_clicked_tile(mouse_pos)
                         # get coords of clicked tile
                         if (tile_coords is not None):
@@ -462,7 +443,6 @@ def main():
                             if (event.button == LEFT_CLICK):
                                 if(not board.first_click):
                                     first_click(tile, board)
-                                    board.first_click = True
                                 else:
                                     left_click_tile(tile, board)
                             # for right-click, execute flagging logic
@@ -480,7 +460,7 @@ def main():
             draw_start_menu()
         elif game_state == "playing":
             # draw background
-            screen.blit(sprites[Sprite.BACKGROUND], (0,0))
+            draw_background()
 
             draw_board(board)
 
@@ -495,7 +475,7 @@ def main():
         # during gameover, display everything minus the cursor, and plus the blinking game over panel
         elif game_state == "game_over":
             # draw background
-            screen.blit(sprites[Sprite.BACKGROUND], (0,0))
+            draw_background()
 
             draw_board(board)
 
