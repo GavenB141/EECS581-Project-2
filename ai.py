@@ -174,6 +174,11 @@ class AISolver:
                         if not (0 <= last[0] < rows and 0 <= last[1] < cols):
                             continue
 
+                        # cells on the hidden side just past the ends of the line may stay hidden
+                        a_prev = (first[0] - dr, first[1] - dc)
+                        d_next = (last[0] + dr, last[1] + dc)
+                        allowed = set(side_cells) | {a_prev, d_next}
+
                         # other neighbors must be revealed or the deduction isn't certain
                         clean = True
                         for x, y in line:
@@ -184,7 +189,7 @@ class AISolver:
                                         continue
                                     if not (0 <= nx < rows and 0 <= ny < cols):
                                         continue
-                                    if (nx, ny) in side_cells:
+                                    if (nx, ny) in allowed:
                                         continue
                                     if not board.tiles[nx][ny].is_revealed:
                                         clean = False
