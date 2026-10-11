@@ -6,6 +6,7 @@ and a fresh Board. Created 2026-10-10 for Anthony Tran's settings task.
 from dataclasses import dataclass, replace
 
 BOARD_SIZES = (8, 10, 12)
+AI_STRENGTHS = ("easy", "medium", "hard")
 MAX_HINTS = 10
 MAX_TIME_SECONDS = 1800
 
@@ -18,6 +19,7 @@ class GameSettings:
     mines: int = 20
     max_hints: int = 0
     time_limit_seconds: int = 0
+    strength: str = "hard"
 
     @property
     def mine_limit(self):
@@ -30,6 +32,8 @@ class GameSettings:
                   self.time_limit_seconds)
         if any(type(value) is not int for value in values):
             raise ValueError("Settings must be integers")
+        if self.strength not in AI_STRENGTHS:
+            raise ValueError("AI strength must be easy, medium, or hard")
         if self.board_size not in BOARD_SIZES:
             raise ValueError("Board size must be 8, 10, or 12")
         if not 1 <= self.mines <= self.mine_limit:
@@ -49,6 +53,10 @@ class GameSettings:
             size = BOARD_SIZES[index]
             return replace(self, board_size=size,
                            mines=min(self.mines, min(99, size * size - 9)))
+        if field == "strength":
+            index = AI_STRENGTHS.index(self.strength)
+            index = max(0, min(len(AI_STRENGTHS) - 1, index + direction))
+            return replace(self, strength=AI_STRENGTHS[index])
         limits = {"mines": (1, self.mine_limit, 1),
                   "max_hints": (0, MAX_HINTS, 1),
                   "time_limit_seconds": (0, MAX_TIME_SECONDS, 60)}
