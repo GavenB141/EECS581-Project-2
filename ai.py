@@ -1,7 +1,7 @@
 '''
 ai.py
 Description: AI solver functionality for Project 2
-Author(s): Gaven Behrends
+Author(s): Gaven Behrends, Cooper Fish
 Created: 10.04.2026
 '''
 
@@ -107,16 +107,97 @@ class AISolver:
                             return     
                     return
         self.select_random(board)
-                    
-
 
     # HARD: The computer applies all the rules from the Medium level, plus the 1-2-1 pattern rule. If three side-by-side revealed cells show “1-2-1,” 
     # the AI can logically deduce that the two outer hidden neighbors are mines (and should be flagged), while the inner hidden neighbor is safe (and should be opened). 
     # If no rule applies, the AI should fall back to a random click.
+    
     def run_hard(self, board: Board):
-        return # TODO
+        # stop if the game is already over
+        if board.is_game_lost or board.is_game_won: 
+            return
 
-        # TODO: run the appropriate solving algorithm and return True when finished.
-        # it may be desirable to have solver algorithms run over multiple ticks
-        # with more delay logic so a user can follow along if, for example, the AI
-        # flags multiple cells in a turn.
+        # click randomly first
+        if board.num_revealed == 0:
+            self.select_random(board)
+            return
+
+        rows, cols = len(board.tiles), len(board.tiles[0])
+
+        # Medium rules
+        for row in range(rows):
+            for col in range(cols):
+                tile = board.tiles[row][col]
+                if not tile.is_revealed or tile.value < 1 or tile.value > 8:
+                    continue
+                neighbors = get_surrounding_tiles(tile, board)
+                flagged = [n for n in neighbors if n.is_flagged]
+                hidden = [n for n in neighbors if not n.is_revealed and not n.is_flagged]
+
+                if hidden and len(flagged) + len(hidden) == tile.value:
+                    for n in hidden:
+                        right_click_tile(n, board)
+                    return
+
+                if hidden and len(flagged) == tile.value:
+                    for n in hidden:
+                        left_click_tile(n, board)
+                        if board.is_game_lost or board.is_game_won:
+                            return
+                    return
+
+        # look for three revealed tiles in a row showing 1, 2, 1
+        for r in range(rows):
+            for c in range(cols):
+                # (0, 1) checks horizontal lines, (1, 0) checks vertical lines
+                for dr, dc in ((0, 1), (1, 0)):
+                    pr, pc = dc, dr
+                    # skip if the line would go off the board
+                    if r + 2 * dr >= rows or c + 2 * dc >= cols:
+                        continue
+                    line = [(r + dr * i, c + dc * i) for i in range(3)]
+                    line_tiles = [board.tiles[x][y] for x, y in line]
+                    if not all(t.is_revealed for t in line_tiles):
+                        continue
+                    if [t.value for t in line_tiles] != [1, 2, 1]:
+                        continue
+
+                    # try the hidden tiles on each side of the line
+                    for side in (1, -1):
+                        side_cells = [(x + pr * side, y + pc * side) for x, y in line]
+                        first, last = side_cells[0], side_cells[2]
+                        # skip if this side is off the board
+                        if not (0 <= first[0] < rows and 0 <= first[1] < cols):
+                            continue
+                        if not (0 <= last[0] < rows and 0 <= last[1] < cols):
+                            continue
+
+                        # other neighbors must be revealed or the deduction isn't certain
+                        clean = True
+                        for x, y in line:
+                            for ax in (-1, 0, 1):
+                                for ay in (-1, 0, 1):
+                                    nx, ny = x + ax, y + ay
+                                    if (ax, ay) == (0, 0):
+                                        continue
+                                    if not (0 <= nx < rows and 0 <= ny < cols):
+                                        continue
+                                    if (nx, ny) in side_cells:
+                                        continue
+                                    if not board.tiles[nx][ny].is_revealed:
+                                        clean = False
+                        if not clean:
+                            continue
+
+                        # a and d are the outer tiles, b is the middle
+                        a, b, d = (board.tiles[x][y] for x, y in side_cells)
+                        if a.is_revealed or b.is_revealed or d.is_revealed or b.is_flagged:
+                            continue
+
+                        # flag the outer two, open the middle
+                        for t in (a, d):
+                            if not t.is_flagged:
+                                right_click_tile(t, board)
+                        left_click_tile(b, board)
+                        return
+        self.select_random(board)
