@@ -67,7 +67,7 @@ class GameSettings:
             return replace(self, mode=GAME_MODES[index])
         limits = {"mines": (1, self.mine_limit, 1),
                   "max_hints": (0, MAX_HINTS, 1),
-                  "time_limit_seconds": (0, MAX_TIME_SECONDS, 60)}
+                  "time_limit_seconds": (0, MAX_TIME_SECONDS, 30)}
         if field not in limits:
             raise ValueError(f"Unknown setting: {field}")
         low, high, step = limits[field]

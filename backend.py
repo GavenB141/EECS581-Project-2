@@ -83,6 +83,7 @@ def left_click_tile(tile: Tile, board: Board):
     # if the tile is a mine, set the game lost parameter to true
     if (tile.is_mine):
         board.is_game_lost = True
+        stop_timer(board)
         board.clicked_mine = tile
         reveal_all_mines(board)
         return
@@ -104,6 +105,7 @@ def left_click_tile(tile: Tile, board: Board):
 def check_win(board: Board):
     if (board.num_revealed == (board.rows * board.cols - board.mines)):
         board.is_game_won = True
+        stop_timer(board)
 
 # obtains the valid tiles surrounding the input tile on the board
 # authored by: Andrew Huang
@@ -161,6 +163,16 @@ def get_time_remaining(board: Board): # returns seconds remaining, or None if un
     elapsed = time.monotonic() - board.start_time
     return max(0, board.time_limit_seconds - elapsed)
 
+def get_elapsed_time(board: Board):
+    if board.start_time is None:
+        return 0
+    end_time = board.end_time if board.end_time is not None else time.monotonic()
+    return max(0, int(end_time - board.start_time))
+
+def stop_timer(board: Board):
+    if board.start_time is not None and board.end_time is None:
+        board.end_time = time.monotonic()
+
 def check_time(board: Board): # ends the game as a loss if time has run out
     if board.is_game_won or board.is_game_lost:
         return board.is_time_up
@@ -168,6 +180,7 @@ def check_time(board: Board): # ends the game as a loss if time has run out
     if remaining is not None and remaining <= 0:
         board.is_time_up = True
         board.is_game_lost = True
+        stop_timer(board)
         reveal_all_mines(board)
         return True
     return False

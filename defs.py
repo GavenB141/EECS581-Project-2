@@ -86,4 +86,5 @@ class Board():
         self.mines = mines
         self.clicked_mine: Tile | None = None
         self.start_time: float | None = None
+        self.end_time: float | None = None
         self.is_time_up = False

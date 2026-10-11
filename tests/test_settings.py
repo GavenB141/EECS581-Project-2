@@ -31,7 +31,9 @@ class SettingsTests(unittest.TestCase):
         self.assertEqual(GameSettings(mines=1).adjusted("mines", -1).mines, 1)
         self.assertEqual(GameSettings().adjusted("max_hints", -1).max_hints, 0)
         self.assertEqual(GameSettings(max_hints=10).adjusted("max_hints", 1).max_hints, 10)
-        self.assertEqual(GameSettings().adjusted("time_limit_seconds", 1).time_limit_seconds, 60)
+        self.assertEqual(GameSettings().time_limit_seconds, 0)
+        self.assertEqual(GameSettings().adjusted("time_limit_seconds", 1).time_limit_seconds, 30)
+        self.assertEqual(GameSettings(time_limit_seconds=30).adjusted("time_limit_seconds", -1).time_limit_seconds, 0)
         self.assertEqual(GameSettings(time_limit_seconds=1800).adjusted("time_limit_seconds", 1).time_limit_seconds, 1800)
 
     def test_new_game_snapshot(self):

@@ -24,6 +24,8 @@ from backend import (
     right_click_tile ,
     check_win ,
     get_surrounding_tiles ,
+    check_time,
+    get_elapsed_time,
 )
 from ai import AISolver , AIStrength
 
@@ -165,6 +167,23 @@ class TestMinesweeperBackend(unittest.TestCase):
             board.is_game_won,
             "game was incorrectly marked as won."
         )
+
+    def test_timer_counts_up_and_optional_limit_expires(self):
+        board = Board(1)
+        self.assertEqual(get_elapsed_time(board), 0)
+        board.start_time = 100
+
+        with patch("backend.time.monotonic", return_value=129.9):
+            self.assertEqual(get_elapsed_time(board), 29)
+            self.assertFalse(check_time(board))
+
+        board.time_limit_seconds = 30
+        with patch("backend.time.monotonic", return_value=130):
+            self.assertEqual(get_elapsed_time(board), 30)
+            self.assertTrue(check_time(board))
+            self.assertTrue(board.is_game_lost)
+            self.assertTrue(board.is_time_up)
+            self.assertEqual(get_elapsed_time(board), 30)
 
 
 class TestMinesweeperAI(unittest.TestCase):

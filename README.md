@@ -33,6 +33,9 @@ How it is measured: estimate how long a task would take in person hours based on
 
 ## Running the Game
 The game can be played by running the gui.py front-end script.
+The game clock starts on the first revealed tile and counts upward. A time
+limit of 0 (the default) disables the limit; use the Timer arrows in settings
+to add or remove 30 seconds, up to 30 minutes.
 
 ## System Architecture
 ### Purpose
