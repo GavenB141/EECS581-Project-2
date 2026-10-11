@@ -4,7 +4,8 @@ import pygame as pg
 from defs import *
 from backend import *
 from ai import *
-
+from pathlib import Path
+from settings import GameSettings
 
 SCALE = 4
 SCREEN_WIDTH = 192 # ten 16px tiles + four 8px tiles = 192
@@ -67,12 +68,8 @@ screen = pg.display.set_mode((SCALE * SCREEN_WIDTH, SCALE * SCREEN_HEIGHT))
 # which screen is currently active between menu or playing
 game_state = "menu"
 
-# mine count selected in settings (=<20, >=10)
-selected_mines = 20
-
-# selected board size is displayed in settings but is not yet used by board generation
-selected_board_size = 10
-
+# Menu choices persist when returning from a finished game.
+selected_settings = GameSettings()
 
 def scaled_rect(pos, size):
     return pg.Rect(pos[0] * SCALE, pos[1] * SCALE, size[0] * SCALE, size[1] * SCALE)
@@ -121,7 +118,7 @@ def get_clicked_tile(mouse_pos):
     y -= 56
 
     # if the click is outside of the board, return None
-    if (x < 0 or y < 0 or x >= 160 or y >=160):
+    if (x < 0 or y < 0 or x >= SCREEN_WIDTH - 32 or y >= SCREEN_HEIGHT - 72):
         return None
 
     # convert to tile coords
@@ -141,7 +138,7 @@ def init_sprites():
     dest = (0,0)
 
     # load entire sprite sheet
-    sprite_sheet = pg.image.load("./assets/minesweeper_sheet.png")
+    sprite_sheet = pg.image.load(str(Path(__file__).parent / "assets/minesweeper_sheet.png"))
 
     # special sized sprites
     # background is 192x232px
@@ -155,7 +152,7 @@ def init_sprites():
     sprites[Sprite.BACKGROUND] = bg_surf
 
     # load start screen panel
-    start_screen_sheet = pg.image.load("./assets/start_screen.png")
+    start_screen_sheet = pg.image.load(str(Path(__file__).parent / "assets/start_screen.png"))
 
     panel_surf = pg.Surface((176,216))
     panel_sheet_location = (9, 85, 176, 216)
@@ -237,7 +234,7 @@ def init_sprites():
         save_sprites_from_sheet(name, abs_pos, pos, offset, size, sprite_sheet)
 
     # load game over panel
-    game_over_sheet = pg.image.load("./assets/game_over_sheet.png").convert_alpha()
+    game_over_sheet = pg.image.load(str(Path(__file__).parent / "assets/game_over_sheet.png")).convert_alpha()
 
     # save game over panel as a sprite
     save_sprites_from_sheet(Sprite.GAME_OVER, GAME_OVER_SOURCE_RECT.topleft, (0, 0), (0, 0), GAME_OVER_SOURCE_RECT.size, game_over_sheet, native_size=GAME_OVER_SIZE)
@@ -254,7 +251,8 @@ def draw_flags_left_numbers(board):
     # ones_sprite = sprites[Sprite.RED_ZERO]
     
     # screen starts at (1,77) on the sprite sheet so subtract that offset
-    locations = [(tens_sprite, [144 - 1, 109 - 77]), (ones_sprite, [152 - 1, 109 - 77])]
+    locations = [(tens_sprite, [SCREEN_WIDTH - 49, 32]),
+                 (ones_sprite, [SCREEN_WIDTH - 41, 32])]
     for surf, tile_coord in locations:
         # scale
         tile_coord[0] *= SCALE
@@ -294,8 +292,8 @@ def draw_settings_page():
         sprites["settings_panel"],
         (SETTINGS_PANEL_POS[0] * SCALE, SETTINGS_PANEL_POS[1] * SCALE)
     )
-    draw_red_setting_value(str(selected_mines), MINE_COUNT_DIGITS_POS)
-    draw_red_setting_value(f"{selected_board_size}x{selected_board_size}", BOARD_SIZE_VALUE_POS)
+    draw_red_setting_value(str(selected_settings.mines), MINE_COUNT_DIGITS_POS)
+    draw_red_setting_value(f"{selected_settings.board_size}x{selected_settings.board_size}", BOARD_SIZE_VALUE_POS)
 
 
 def draw_red_setting_value(value, position):
@@ -311,11 +309,37 @@ def draw_red_setting_value(value, position):
             screen.blit(separator, separator.get_rect(center=glyph_rect.center))
         x += 8
 
+def configure_display(size=10):
+    """Resize the board area and overlay hit boxes together for each new game."""
+    global screen, SCREEN_WIDTH, SCREEN_HEIGHT, GAME_OVER_RECT, MENU_BUTTON_RECT
+    SCREEN_WIDTH = size * 16 + 32
+    SCREEN_HEIGHT = size * 16 + 72
+    screen = pg.display.set_mode((SCREEN_WIDTH * SCALE, SCREEN_HEIGHT * SCALE))
+    GAME_OVER_RECT.topleft = (
+        (SCREEN_WIDTH - GAME_OVER_SIZE[0]) // 2 * SCALE,
+        ((SCREEN_HEIGHT - GAME_OVER_SIZE[1]) // 2 + 20) * SCALE)
+    MENU_BUTTON_RECT.topleft = (
+        GAME_OVER_RECT.x + MENU_BUTTON_RELATIVE_POS[0] * SCALE,
+        GAME_OVER_RECT.y + MENU_BUTTON_RELATIVE_POS[1] * SCALE)
+
+
+def draw_background():
+    # Draw a size-aware frame so the old fixed-grid artwork is never stretched.
+    screen.fill((0, 0, 0))
+    pg.draw.rect(screen, (180, 180, 180),
+                 pg.Rect(8 * SCALE, 8 * SCALE,
+                         (SCREEN_WIDTH - 16) * SCALE, (SCREEN_HEIGHT - 16) * SCALE))
+    pg.draw.rect(screen, (0, 0, 0),
+                 pg.Rect(16 * SCALE, 16 * SCALE, (SCREEN_WIDTH - 32) * SCALE, 32 * SCALE))
+    font = pg.font.Font(None, 8 * SCALE)
+    for label, x in (("STATUS", 31), ("FLAGS", SCREEN_WIDTH - 49)):
+        screen.blit(font.render(label, True, (255, 255, 255)), (x * SCALE, 18 * SCALE))
+
 
 # draw from given board
 def draw_board(board):
-    for r in range(10):
-        for c in range(10):
+    for r in range(board.rows):
+        for c in range(board.cols):
             tile = board.tiles[r][c]
 
             sprite_to_draw = Sprite.VERITY_DEAD # if this gets drawn then check for error
@@ -412,7 +436,7 @@ def draw_face(board):
         face = Sprite.VERITY_SMILE
 
     # draw face image to screen
-    screen.blit(sprites[face.value], (FACE_POS[0] * SCALE, FACE_POS[1] * SCALE))
+    screen.blit(sprites[face.value], ((SCREEN_WIDTH // 2 - 8) * SCALE, FACE_POS[1] * SCALE))
 
 
 # helper function for drawing game over panel when the game ends
@@ -429,7 +453,7 @@ def main():
     pg.init()
 
     # updates the non local vars instead of making new local ones
-    global game_state, selected_mines, selected_board_size
+    global game_state, selected_settings
 
     clock = pg.time.Clock()
     running = True
@@ -456,10 +480,11 @@ def main():
             # on click, handle it differently depending on which screen is active
             elif event.type == pg.MOUSEBUTTONDOWN:
                 if(game_state == "game_over"):
-                    mouse_pos = pg.mouse.get_pos()
+                    mouse_pos = event.pos
 
                     if(event.button == 1 and MENU_BUTTON_RECT.collidepoint(mouse_pos)):
                         game_state = "menu"
+                        configure_display()
 
                 # Menu controls are positioned relative to the panel and scaled by SCALE.
                 elif game_state == "menu":
@@ -473,11 +498,10 @@ def main():
                         (PANEL_X + SETTINGS_BUTTON_POS[0], PANEL_Y + SETTINGS_BUTTON_POS[1]),
                         SETTINGS_BUTTON_SIZE
                     )
-
                     if event.button == 1 and start_button_rect.collidepoint(mouse_pos):
-                        board = Board(selected_mines)
-                        # test with user amount of bombs
-
+                        board = selected_settings.create_board()
+                        configure_display(board.rows)
+                        game_over_start_time = -1
                         game_state = "playing"
                     elif event.button == 1 and settings_button_rect.collidepoint(mouse_pos):
                         game_state = "settings"
@@ -488,20 +512,19 @@ def main():
                     board_up_rect = settings_rect(BOARD_UP_POS, SETTING_ARROW_SIZE)
                     board_down_rect = settings_rect(BOARD_DOWN_POS, SETTING_ARROW_SIZE)
                     settings_start_rect = settings_rect(SETTINGS_START_POS, SETTINGS_START_SIZE)
-                    board_size_index = BOARD_SIZE_OPTIONS.index(selected_board_size)
 
                     if mine_up_rect.collidepoint(mouse_pos):
-                        selected_mines = min(20, selected_mines + 1)
+                        selected_settings = selected_settings.adjusted("mines", 1)
                     elif mine_down_rect.collidepoint(mouse_pos):
-                        selected_mines = max(10, selected_mines - 1)
+                        selected_settings = selected_settings.adjusted("mines", -1)
                     elif board_up_rect.collidepoint(mouse_pos):
-                        selected_board_size = BOARD_SIZE_OPTIONS[
-                            min(len(BOARD_SIZE_OPTIONS) - 1, board_size_index + 1)
-                        ]
+                        selected_settings = selected_settings.adjusted("board_size", 1)
                     elif board_down_rect.collidepoint(mouse_pos):
-                        selected_board_size = BOARD_SIZE_OPTIONS[max(0, board_size_index - 1)]
+                        selected_settings = selected_settings.adjusted("board_size", -1)
                     elif settings_start_rect.collidepoint(mouse_pos):
-                        board = Board(selected_mines)
+                        board = selected_settings.create_board()
+                        configure_display(board.rows)
+                        game_over_start_time = -1
                         game_state = "playing"
                 # on click, get the cords of the tile that was clicked
                 elif game_state == "playing":
@@ -512,7 +535,7 @@ def main():
                     LEFT_CLICK = 1
                     RIGHT_CLICK = 3
                     if (event.button == LEFT_CLICK or event.button == RIGHT_CLICK):
-                        mouse_pos = pg.mouse.get_pos()
+                        mouse_pos = event.pos
                         tile_coords = get_clicked_tile(mouse_pos)
                         # get coords of clicked tile
                         if (tile_coords is not None):
@@ -522,7 +545,6 @@ def main():
                             if (event.button == LEFT_CLICK):
                                 if(not board.first_click):
                                     first_click(tile, board)
-                                    board.first_click = True
                                 else:
                                     left_click_tile(tile, board)
 
@@ -564,7 +586,7 @@ def main():
             draw_settings_page()
         elif game_state == "playing":
             # draw background
-            screen.blit(sprites[Sprite.BACKGROUND], (0,0))
+            draw_background()
 
             draw_board(board)
 
@@ -579,7 +601,7 @@ def main():
         # during gameover, display everything minus the cursor, and plus the blinking game over panel
         elif game_state == "game_over":
             # draw background
-            screen.blit(sprites[Sprite.BACKGROUND], (0,0))
+            draw_background()
 
             draw_board(board)
 
