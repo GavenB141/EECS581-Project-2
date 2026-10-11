@@ -13,16 +13,6 @@ SCREEN_HEIGHT = 232 # ten 16px tiles + nine 8px tiles = 232
 PANEL_X = (SCREEN_WIDTH - 176) // 2
 PANEL_Y = (SCREEN_HEIGHT - 216) // 2
 
-# labeling postitions and sizes for each respective start screen interactive asset
-NUMBER_GAP_POS = (93, 83)
-NUMBER_GAP_SIZE = (16, 8)
-
-UP_ARROW_POS = (111, 83)
-UP_ARROW_SIZE = (8, 8)
-
-DOWN_ARROW_POS = (120, 83)
-DOWN_ARROW_SIZE = (8, 8)
-
 START_BUTTON_POS = (44, 136)
 START_BUTTON_SIZE = (88, 24)
 
@@ -31,10 +21,13 @@ SETTINGS_BUTTON_SIZE = (80, 20)
 BOARD_SIZE_OPTIONS = (8, 10, 12)
 SETTINGS_PANEL_POS = (8, 8)
 SETTINGS_PANEL_SIZE = (176, 216)
-BOARD_SIZE_LEFT_POS = (48, 104)
-BOARD_SIZE_RIGHT_POS = (120, 104)
+BOARD_SIZE_LEFT_POS = (48, 76)
+BOARD_SIZE_RIGHT_POS = (120, 76)
 BOARD_SIZE_ARROW_SIZE = (24, 24)
-SETTINGS_BACK_POS = (48, 160)
+MINE_COUNT_LEFT_POS = (48, 128)
+MINE_COUNT_RIGHT_POS = (120, 128)
+MINE_COUNT_DIGITS_POS = (88, 156)
+SETTINGS_BACK_POS = (56, 176)
 SETTINGS_BACK_SIZE = (80, 24)
 
 # game over panel constants
@@ -70,10 +63,10 @@ screen = pg.display.set_mode((SCALE * SCREEN_WIDTH, SCALE * SCREEN_HEIGHT))
 # which screen is currently active between menu or playing
 game_state = "menu"
 
-# mine count chosen on the start menu (=<20, >=10)
+# mine count selected in settings (=<20, >=10)
 selected_mines = 20
 
-# selected by the settings page; board generation is not wired to this setting yet
+# selected board size is displayed in settings but is not yet used by board generation
 selected_board_size = 10
 
 
@@ -283,17 +276,26 @@ def draw_status(board):
 
     screen.blit(surf, tile_coord)
 
-# Function written by Evan Noeth
-# draw the start menu (the panel graphic plus the live mine count)
+# Draw the start menu.
 def draw_start_menu():
-    panel_surf = sprites[Sprite.START_PANEL.value]
-    screen.blit(panel_surf, (PANEL_X * SCALE, PANEL_Y * SCALE))
+    screen.fill((42, 42, 42))
+    panel_rect = scaled_rect(SETTINGS_PANEL_POS, SETTINGS_PANEL_SIZE)
+    pg.draw.rect(screen, (130, 130, 130), panel_rect)
+    pg.draw.rect(screen, (230, 230, 230), panel_rect, width=SCALE)
 
-    draw_mine_count()
+    title_font = pg.font.Font(None, 18 * SCALE)
+    title = title_font.render("MINESWEEPER", True, (255, 255, 255))
+    screen.blit(title, title.get_rect(center=(SCREEN_WIDTH * SCALE // 2, 76 * SCALE)))
+
+    start_rect = scaled_rect(
+        (PANEL_X + START_BUTTON_POS[0], PANEL_Y + START_BUTTON_POS[1]),
+        START_BUTTON_SIZE
+    )
     settings_rect = scaled_rect(
         (PANEL_X + SETTINGS_BUTTON_POS[0], PANEL_Y + SETTINGS_BUTTON_POS[1]),
         SETTINGS_BUTTON_SIZE
     )
+    draw_ui_button("START", start_rect)
     draw_ui_button("SETTINGS", settings_rect)
 
 
@@ -305,11 +307,11 @@ def draw_settings_page():
 
     title_font = pg.font.Font(None, 18 * SCALE)
     title = title_font.render("SETTINGS", True, (255, 255, 255))
-    screen.blit(title, title.get_rect(center=(SCREEN_WIDTH * SCALE // 2, 76 * SCALE)))
+    screen.blit(title, title.get_rect(center=(SCREEN_WIDTH * SCALE // 2, 48 * SCALE)))
 
     label_font = pg.font.Font(None, 12 * SCALE)
     label = label_font.render("BOARD SIZE", True, (255, 255, 255))
-    screen.blit(label, label.get_rect(center=(SCREEN_WIDTH * SCALE // 2, 96 * SCALE)))
+    screen.blit(label, label.get_rect(center=(SCREEN_WIDTH * SCALE // 2, 68 * SCALE)))
 
     left_rect = scaled_rect(BOARD_SIZE_LEFT_POS, BOARD_SIZE_ARROW_SIZE)
     right_rect = scaled_rect(BOARD_SIZE_RIGHT_POS, BOARD_SIZE_ARROW_SIZE)
@@ -321,27 +323,32 @@ def draw_settings_page():
         True,
         (255, 255, 255)
     )
-    screen.blit(size_text, size_text.get_rect(center=(SCREEN_WIDTH * SCALE // 2, 116 * SCALE)))
+    screen.blit(size_text, size_text.get_rect(center=(SCREEN_WIDTH * SCALE // 2, 104 * SCALE)))
+
+    mine_label = label_font.render("MINE COUNT", True, (255, 255, 255))
+    screen.blit(mine_label, mine_label.get_rect(center=(SCREEN_WIDTH * SCALE // 2, 120 * SCALE)))
+
+    mine_left_rect = scaled_rect(MINE_COUNT_LEFT_POS, BOARD_SIZE_ARROW_SIZE)
+    mine_right_rect = scaled_rect(MINE_COUNT_RIGHT_POS, BOARD_SIZE_ARROW_SIZE)
+    draw_ui_button("<", mine_left_rect, font_size=16)
+    draw_ui_button(">", mine_right_rect, font_size=16)
+
+    draw_mine_count()
 
     back_rect = scaled_rect(SETTINGS_BACK_POS, SETTINGS_BACK_SIZE)
     draw_ui_button("BACK", back_rect)
 
-# Function written by Evan Noeth
-# Date Created 9/19/2026
-# draw the two-digit mine count into the number gap on the start menu panel
+
 def draw_mine_count():
     tens_digit = selected_mines // 10
     ones_digit = selected_mines % 10
-    # the sprites are 20 to 29, for zero to nine
-    tens_sprite = sprites[tens_digit + 20]
-    ones_sprite = sprites[ones_digit + 20]
-
-    # NUMBER_GAP_POS is local to panels top left corner, each digit is 8px wide unscaled
-    tens_pos = ((PANEL_X + NUMBER_GAP_POS[0]) * SCALE, (PANEL_Y + NUMBER_GAP_POS[1]) * SCALE)
-    ones_pos = ((PANEL_X + NUMBER_GAP_POS[0] + 8) * SCALE, (PANEL_Y + NUMBER_GAP_POS[1]) * SCALE)
-
+    tens_sprite = sprites[tens_digit + Sprite.RED_ZERO.value]
+    ones_sprite = sprites[ones_digit + Sprite.RED_ZERO.value]
+    tens_pos = (MINE_COUNT_DIGITS_POS[0] * SCALE, MINE_COUNT_DIGITS_POS[1] * SCALE)
+    ones_pos = ((MINE_COUNT_DIGITS_POS[0] + 8) * SCALE, MINE_COUNT_DIGITS_POS[1] * SCALE)
     screen.blit(tens_sprite, tens_pos)
     screen.blit(ones_sprite, ones_pos)
+
 
 # draw from given board
 def draw_board(board):
@@ -486,15 +493,10 @@ def main():
                     if(event.button == 1 and MENU_BUTTON_RECT.collidepoint(mouse_pos)):
                         game_state = "menu"
 
-                # on click, up/down arrow/start button positions are measured relative to the panel (the graphics own top left corner in unscaled asset, not screen)
-                # then everything scaled by SCALE like draw_to_tile
+                # Menu controls are positioned relative to the panel and scaled by SCALE.
                 elif game_state == "menu":
                     mouse_pos = pg.mouse.get_pos()
 
-                    up_arrow_rect = pg.Rect((PANEL_X + UP_ARROW_POS[0]) * SCALE, (PANEL_Y + UP_ARROW_POS[1]) * SCALE,
-                                             UP_ARROW_SIZE[0] * SCALE, UP_ARROW_SIZE[1] * SCALE)
-                    down_arrow_rect = pg.Rect((PANEL_X + DOWN_ARROW_POS[0]) * SCALE, (PANEL_Y + DOWN_ARROW_POS[1]) * SCALE,
-                                               DOWN_ARROW_SIZE[0] * SCALE, DOWN_ARROW_SIZE[1] * SCALE)
                     start_button_rect = pg.Rect((PANEL_X + START_BUTTON_POS[0]) * SCALE, (PANEL_Y + START_BUTTON_POS[1]) * SCALE,
                                                  START_BUTTON_SIZE[0] * SCALE, START_BUTTON_SIZE[1] * SCALE)
                     settings_button_rect = scaled_rect(
@@ -502,33 +504,34 @@ def main():
                         SETTINGS_BUTTON_SIZE
                     )
 
-                    if up_arrow_rect.collidepoint(mouse_pos):
-                        selected_mines = min(20, selected_mines + 1)
-                    elif down_arrow_rect.collidepoint(mouse_pos):
-                        selected_mines = max(10, selected_mines - 1)
-                    elif start_button_rect.collidepoint(mouse_pos):
+                    if event.button == 1 and start_button_rect.collidepoint(mouse_pos):
                         board = Board(selected_mines)
                         # test with user amount of bombs
 
                         game_state = "playing"
                     elif event.button == 1 and settings_button_rect.collidepoint(mouse_pos):
                         game_state = "settings"
-                elif game_state == "settings":
-                    if event.button == 1:
-                        mouse_pos = pg.mouse.get_pos()
-                        left_rect = scaled_rect(BOARD_SIZE_LEFT_POS, BOARD_SIZE_ARROW_SIZE)
-                        right_rect = scaled_rect(BOARD_SIZE_RIGHT_POS, BOARD_SIZE_ARROW_SIZE)
-                        back_rect = scaled_rect(SETTINGS_BACK_POS, SETTINGS_BACK_SIZE)
-                        selected_index = BOARD_SIZE_OPTIONS.index(selected_board_size)
+                elif game_state == "settings" and event.button == 1:
+                    mouse_pos = pg.mouse.get_pos()
+                    board_left_rect = scaled_rect(BOARD_SIZE_LEFT_POS, BOARD_SIZE_ARROW_SIZE)
+                    board_right_rect = scaled_rect(BOARD_SIZE_RIGHT_POS, BOARD_SIZE_ARROW_SIZE)
+                    mine_left_rect = scaled_rect(MINE_COUNT_LEFT_POS, BOARD_SIZE_ARROW_SIZE)
+                    mine_right_rect = scaled_rect(MINE_COUNT_RIGHT_POS, BOARD_SIZE_ARROW_SIZE)
+                    back_rect = scaled_rect(SETTINGS_BACK_POS, SETTINGS_BACK_SIZE)
+                    board_size_index = BOARD_SIZE_OPTIONS.index(selected_board_size)
 
-                        if left_rect.collidepoint(mouse_pos):
-                            selected_board_size = BOARD_SIZE_OPTIONS[max(0, selected_index - 1)]
-                        elif right_rect.collidepoint(mouse_pos):
-                            selected_board_size = BOARD_SIZE_OPTIONS[
-                                min(len(BOARD_SIZE_OPTIONS) - 1, selected_index + 1)
-                            ]
-                        elif back_rect.collidepoint(mouse_pos):
-                            game_state = "menu"
+                    if board_left_rect.collidepoint(mouse_pos):
+                        selected_board_size = BOARD_SIZE_OPTIONS[max(0, board_size_index - 1)]
+                    elif board_right_rect.collidepoint(mouse_pos):
+                        selected_board_size = BOARD_SIZE_OPTIONS[
+                            min(len(BOARD_SIZE_OPTIONS) - 1, board_size_index + 1)
+                        ]
+                    elif mine_left_rect.collidepoint(mouse_pos):
+                        selected_mines = max(10, selected_mines - 1)
+                    elif mine_right_rect.collidepoint(mouse_pos):
+                        selected_mines = min(20, selected_mines + 1)
+                    elif back_rect.collidepoint(mouse_pos):
+                        game_state = "menu"
                 # on click, get the cords of the tile that was clicked
                 elif game_state == "playing":
                     assert board is not None
