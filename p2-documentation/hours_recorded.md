@@ -14,3 +14,11 @@
 | 9.28.26 | Team Meeting | 1 |
 | 10.04.26 | AISolver Class Creation | 1 |
 | 10.11.26 | AISolver Incorporation into Game Loop & Merge Conflicts | 2.5 |
+
+## Max Toney
+| Date | Item | Hours |
+| :--- | :--- | ---: |
+| 9.28.26 | Team Meeting | 1 |
+| 10.10.26 | Extended function "run" and added functions "get_hidden", "select_random" and "run_easy" | 1.5 |
+
+
