@@ -7,11 +7,12 @@ Created: 10.04.2026
 
 import random
 from enum import Enum
-from defs import Board
+from defs import Board, Tile
+from backend import *
 
-# delay ranges from 1 to 4 seconds at 60 FPS
-MIN_DELAY = 60
-MAX_DELAY = 240
+# delay ranges from 0.5 to 1.5 seconds at 60 FPS
+MIN_DELAY = 30
+MAX_DELAY = 90
 
 # encodes the strength levels of the AI solvers
 class AIStrength(Enum):
@@ -67,6 +68,7 @@ class AISolver:
         # mines aren't placed until after the first click, so it makes sure to run that function so the board isn't blank
         if board.num_revealed == 0:
             first_click(tile, board)
+            board.first_click = True # have to set this flag or else the board breaks in alternating mode
         else:
             left_click_tile(tile, board)
 

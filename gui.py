@@ -3,6 +3,7 @@
 import pygame as pg
 from defs import *
 from backend import *
+from ai import *
 
 
 SCALE = 4
@@ -477,6 +478,12 @@ def main():
 
     # board doesnt exist until the player presses start on the menu
     board = None
+    # same with ai solver
+    ai_solver = AISolver(AIStrength.HARD)
+    # whether or not to alternate turns with the real player
+    ai_alternate = False
+    # whether it's the ai's turn to move
+    ai_turn = True
 
     while running:
         # poll for events
@@ -535,6 +542,9 @@ def main():
                 # on click, get the cords of the tile that was clicked
                 elif game_state == "playing":
                     assert board is not None
+                    # disregard board input when the ai is in control
+                    if ai_turn:
+                        continue
                     LEFT_CLICK = 1
                     RIGHT_CLICK = 3
                     if (event.button == LEFT_CLICK or event.button == RIGHT_CLICK):
@@ -551,15 +561,35 @@ def main():
                                     board.first_click = True
                                 else:
                                     left_click_tile(tile, board)
+
                             # for right-click, execute flagging logic
                             if (event.button == RIGHT_CLICK):
                                 right_click_tile(tile, board)
+
+                            # end turn
+                            if ai_solver is not None and ai_alternate:
+                                ai_turn = True
 
                     # detect game over state change
                     if(board.is_game_lost or board.is_game_won):
                         game_state = "game_over"
                         # record game over start time
                         game_over_start_time = pg.time.get_ticks()
+
+        # now take ai input and detect game overs regardless of real input
+        if game_state == "playing":
+            assert board is not None
+            if ai_turn:
+                assert ai_solver is not None
+                finished = ai_solver.run(board)
+                if finished and ai_alternate:
+                    ai_turn = False
+            # detect game over state change
+            if(board.is_game_lost or board.is_game_won):
+                game_state = "game_over"
+                # record game over start time
+                game_over_start_time = pg.time.get_ticks()
+
 
         # draw whichever screen is currently active
         if game_state == "menu":
