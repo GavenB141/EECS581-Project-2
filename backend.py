@@ -2,6 +2,7 @@
 
 from defs import Tile, Board
 import random
+import time
 
 #authored by: Emily Farley, Peter Barybin
 #date created: 9/18/26
@@ -11,11 +12,16 @@ def first_click(tile: Tile, board: Board):
     first_click_tiles.append(tile)
     block_mine = {(t.row, t.col) for t in first_click_tiles} #create set of tuples to hold tiles that cannot contain mines
 
+    if board.first_click or tile.is_flagged or board.is_game_lost or board.is_game_won:
+        return
+    board.first_click = True
+    board.start_time = time.monotonic()
+
     make_mines(board, block_mine) # randomly place mines in available board spaces
 
     #iterate through all tiles on the board
-    for row in range(10):
-        for col in range(10):
+    for row in range(board.rows):
+        for col in range(board.cols):
             if board.tiles[row][col].is_mine == False: #if tile is not a mine
                 mines_nearby(board.tiles[row][col], board) #set value to number of adjacent mines
     
@@ -25,17 +31,12 @@ def first_click(tile: Tile, board: Board):
 #date created: 9/18/26
 #randomly places user-specified number of mines on a board (no mines placed on first click or its adjacent tiles)
 def make_mines(board: Board, blocked_mines: set):
-    mine_count = 0 #numbers of mines placed on board so far
-    while mine_count < board.mines: #while mine count less than user mine input
-        #generate random integer for row and column 
-        rand_row = random.randint(0,9) 
-        rand_col = random.randint(0,9)
-
-        #if random tile is not in blocked mines set and has not already been made a mine
-        if ((rand_row, rand_col) not in blocked_mines) and (not board.tiles[rand_row][rand_col].is_mine):
-            board.tiles[rand_row][rand_col].is_mine = True #place mine 
-
-            mine_count += 1 #increment mine count
+    available = [tile for row in board.tiles for tile in row
+                 if (tile.row, tile.col) not in blocked_mines and not tile.is_mine]
+    if board.mines > len(available):
+        raise ValueError("Not enough space for mines and the first-click safe area")
+    for tile in random.sample(available, board.mines):
+        tile.is_mine = True
 
 #authored by: Peter Barybin
 #date created: 9/18/26
@@ -55,8 +56,8 @@ def get_tile_at_coords(coords, board: Board):
 # authored by: Sina Asheghalishahi
 # date created: 9/20/26
 def reveal_all_mines(board: Board):
-    for row in range(10):
-        for col in range(10):
+    for row in range(board.rows):
+        for col in range(board.cols):
             if board.tiles[row][col].is_mine:
                 board.tiles[row][col].is_revealed = True
 
@@ -101,7 +102,7 @@ def left_click_tile(tile: Tile, board: Board):
 # authored by: Andrew Huang
 # date created: 9/18/26
 def check_win(board: Board):
-    if (board.num_revealed == (100 - board.mines)):
+    if (board.num_revealed == (board.rows * board.cols - board.mines)):
         board.is_game_won = True
 
 # obtains the valid tiles surrounding the input tile on the board
@@ -116,9 +117,9 @@ def get_surrounding_tiles(tile: Tile, board: Board):
         for col in range(-1, 2):
             offset_row = tile.row + row
             offset_col = tile.col + col 
-            if offset_row < 0 or offset_row >= 10:
+            if offset_row < 0 or offset_row >= board.rows:
                 continue
-            if offset_col < 0 or offset_col >= 10:
+            if offset_col < 0 or offset_col >= board.cols:
                 continue
             if(row == 0 and col == 0):
                 continue
@@ -135,6 +136,8 @@ def get_surrounding_tiles(tile: Tile, board: Board):
 # authored by: Cooper Wright, John Rader
 # date created: 9/18/26
 def right_click_tile(tile: Tile, board: Board):
+    if check_time(board): # checks if time is up
+        return
 
     # ignore revealed tiles
     if tile.is_revealed or board.is_game_lost or board.is_game_won:
@@ -152,3 +155,27 @@ def right_click_tile(tile: Tile, board: Board):
         tile.is_flagged = False
         return
 
+def get_time_remaining(board: Board): # returns seconds remaining, or None if untimed or the clock hasn't started
+    if not board.time_limit_seconds or board.start_time is None:
+        return None
+    elapsed = time.monotonic() - board.start_time
+    return max(0, board.time_limit_seconds - elapsed)
+
+def check_time(board: Board): # ends the game as a loss if time has run out
+    if board.is_game_won or board.is_game_lost:
+        return board.is_time_up
+    remaining = get_time_remaining(board)
+    if remaining is not None and remaining <= 0:
+        board.is_time_up = True
+        board.is_game_lost = True
+        reveal_all_mines(board)
+        return True
+    return False
+
+def handle_left_click(tile: Tile, board: Board):
+    if check_time(board):
+        return
+    if not board.first_click:
+        first_click(tile, board)
+    else:
+        left_click_tile(tile, board)

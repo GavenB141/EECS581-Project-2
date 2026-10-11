@@ -8,7 +8,7 @@ Created: 10.04.2026
 import random
 from enum import Enum
 from defs import Board, Tile
-from backend import *
+from backend import first_click, left_click_tile, right_click_tile, get_surrounding_tiles
 
 # delay ranges from 0.5 to 1.5 seconds at 60 FPS
 MIN_DELAY = 30
@@ -49,8 +49,8 @@ class AISolver:
     # returns every tile that is still hidden and not flagged so the AI knows what it can actually select
     def get_hidden(self, board: Board) -> list[Tile]:
         hidden = []
-        for row in range(10): # need to come back and change range for row and col to be adjustable to changing board size once implemented
-            for col in range(10):
+        for row in range(board.rows):
+            for col in range(board.cols):
                 tile = board.tiles[row][col]
                 if not tile.is_revealed and not tile.is_flagged:
                     hidden.append(tile)
@@ -86,8 +86,8 @@ class AISolver:
         if board.num_revealed == 0:
             self.select_random(board)
 
-        for row in range(10):
-            for col in range(10):
+        for row in range(board.rows):
+            for col in range(board.cols):
                 tile = board.tiles[row][col]
                 if not tile.is_revealed or tile.value < 1 or tile.value > 8:
                     continue
@@ -174,6 +174,11 @@ class AISolver:
                         if not (0 <= last[0] < rows and 0 <= last[1] < cols):
                             continue
 
+                        # cells on the hidden side just past the ends of the line may stay hidden
+                        a_prev = (first[0] - dr, first[1] - dc)
+                        d_next = (last[0] + dr, last[1] + dc)
+                        allowed = set(side_cells) | {a_prev, d_next}
+
                         # other neighbors must be revealed or the deduction isn't certain
                         clean = True
                         for x, y in line:
@@ -184,7 +189,7 @@ class AISolver:
                                         continue
                                     if not (0 <= nx < rows and 0 <= ny < cols):
                                         continue
-                                    if (nx, ny) in side_cells:
+                                    if (nx, ny) in allowed:
                                         continue
                                     if not board.tiles[nx][ny].is_revealed:
                                         clean = False

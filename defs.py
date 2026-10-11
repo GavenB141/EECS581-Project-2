@@ -57,13 +57,23 @@ class Tile():
 
 class Board():
 
-    def __init__(self, mines):
-        # 10x10 2d array of tiles
+    def __init__(self, mines, size=10, *, settings=None):
+        from settings import GameSettings
+        if settings is None:
+            settings = GameSettings(board_size=size, mines=mines)
+        if settings.board_size != size or settings.mines != mines:
+            raise ValueError("Board dimensions/mines must match settings")
+        self.settings = settings
+        self.rows = size
+        self.cols = size
+        self.max_hints = settings.max_hints
+        self.time_limit_seconds = settings.time_limit_seconds
+        # Square grid using the validated menu size
         # initialize with default tiles
         self.tiles = []
-        for r in range(10):
+        for r in range(size):
             row = []
-            for c in range(10):
+            for c in range(size):
                 row.append(Tile(r,c))
             self.tiles.append(row)
 
@@ -75,3 +85,5 @@ class Board():
         self.num_revealed = 0
         self.mines = mines
         self.clicked_mine: Tile | None = None
+        self.start_time: float | None = None
+        self.is_time_up = False

@@ -523,6 +523,8 @@ def draw_game_timer(start_time , end_time=None):
 def main():
     # pygame setup
     pg.init()
+
+    # updates the non local vars instead of making new local ones
     global game_state, selected_settings
 
     clock = pg.time.Clock()
