@@ -7,11 +7,12 @@ Created: 10.04.2026
 
 import random
 from enum import Enum
-from defs import Board
+from defs import Board, Tile
+from backend import *
 
-# delay ranges from 1 to 4 seconds at 60 FPS
-MIN_DELAY = 60
-MAX_DELAY = 240
+# delay ranges from 0.5 to 1.5 seconds at 60 FPS
+MIN_DELAY = 30
+MAX_DELAY = 90
 
 # encodes the strength levels of the AI solvers
 class AIStrength(Enum):
@@ -67,6 +68,7 @@ class AISolver:
         # mines aren't placed until after the first click, so it makes sure to run that function so the board isn't blank
         if board.num_revealed == 0:
             first_click(tile, board)
+            board.first_click = True # have to set this flag or else the board breaks in alternating mode
         else:
             left_click_tile(tile, board)
 
@@ -172,6 +174,11 @@ class AISolver:
                         if not (0 <= last[0] < rows and 0 <= last[1] < cols):
                             continue
 
+                        # cells on the hidden side just past the ends of the line may stay hidden
+                        a_prev = (first[0] - dr, first[1] - dc)
+                        d_next = (last[0] + dr, last[1] + dc)
+                        allowed = set(side_cells) | {a_prev, d_next}
+
                         # other neighbors must be revealed or the deduction isn't certain
                         clean = True
                         for x, y in line:
@@ -182,7 +189,7 @@ class AISolver:
                                         continue
                                     if not (0 <= nx < rows and 0 <= ny < cols):
                                         continue
-                                    if (nx, ny) in side_cells:
+                                    if (nx, ny) in allowed:
                                         continue
                                     if not board.tiles[nx][ny].is_revealed:
                                         clean = False
