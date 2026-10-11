@@ -32,11 +32,19 @@ BOARD_UP_POS = (79, 87)
 BOARD_DOWN_POS = (88, 87)
 STRENGTH_UP_POS = (79, 132)
 STRENGTH_DOWN_POS = (88, 132)
+MODE_UP_POS = (79, 151)
+MODE_DOWN_POS = (88, 151)
 MINE_COUNT_DIGITS_POS = (102, 60)
 BOARD_SIZE_VALUE_POS = (102, 88)
 STRENGTH_VALUE_POS = (102, 127)
+MODE_VALUE_POS = (102, 146)
 # The strength glyphs have different source baselines; align their visible ink.
 STRENGTH_VALUE_PIXEL_OFFSETS = {"hard": 0, "medium": 5, "easy": -4}
+MODE_TEXT_AREAS = {
+    "none": pg.Rect(2, 29, 56, 18),
+    "interactive": pg.Rect(58, 29, 61, 18),
+    "auto": pg.Rect(119, 29, 55, 18),
+}
 SETTINGS_START_POS = (18, 171)
 SETTINGS_START_SIZE = (82, 23)
 
@@ -75,6 +83,17 @@ game_state = "menu"
 
 # Menu choices persist when returning from a finished game.
 selected_settings = GameSettings()
+
+
+def ai_turn_configuration(mode):
+    if mode == "auto":
+        return False, True
+    if mode == "none":
+        return False, False
+    if mode == "interactive":
+        return True, True
+    raise ValueError(f"Unknown game mode: {mode}")
+
 
 def scaled_rect(pos, size):
     return pg.Rect(pos[0] * SCALE, pos[1] * SCALE, size[0] * SCALE, size[1] * SCALE)
@@ -179,6 +198,9 @@ def init_sprites():
     for strength, text_area in strength_text_areas.items():
         strength_text = settings_menu_scaled.subsurface(text_area).copy()
         sprites[f"strength_{strength}"] = scale_surface(strength_text)
+    for mode, text_area in MODE_TEXT_AREAS.items():
+        mode_text = settings_menu_scaled.subsurface(text_area).copy()
+        sprites[f"mode_{mode}"] = scale_surface(mode_text)
 
     # load 16x16 sprites
     # track sprite type and position on sprite sheet
@@ -302,7 +324,7 @@ def draw_start_menu():
 def draw_settings_page():
     screen.fill((42, 42, 42))
     screen.blit(
-        sprites["settings_panel"],
+         sprites["settings_panel"],
         (SETTINGS_PANEL_POS[0] * SCALE, SETTINGS_PANEL_POS[1] * SCALE)
     )
     draw_red_setting_value(str(selected_settings.mines), MINE_COUNT_DIGITS_POS)
@@ -314,6 +336,10 @@ def draw_settings_page():
         strength_pos[1] + STRENGTH_VALUE_PIXEL_OFFSETS[selected_settings.strength],
     )
     screen.blit(strength_sprite, strength_pos)
+    mode_sprite = sprites[f"mode_{selected_settings.mode}"]
+    mode_pos = settings_rect(MODE_VALUE_POS, (1, 1)).topleft
+    mode_pos = (mode_pos[0], mode_pos[1] + 25)
+    screen.blit(mode_sprite, mode_pos)
 
 
 def draw_red_setting_value(value, position):
@@ -486,9 +512,7 @@ def main():
     # same with ai solver
     ai_solver = AISolver(AIStrength[selected_settings.strength.upper()])
     # whether or not to alternate turns with the real player
-    ai_alternate = False
-    # whether it's the ai's turn to move
-    ai_turn = True
+    ai_alternate, ai_turn = ai_turn_configuration(selected_settings.mode)
 
     while running:
         # poll for events
@@ -521,6 +545,7 @@ def main():
                     if event.button == 1 and start_button_rect.collidepoint(mouse_pos):
                         board = selected_settings.create_board()
                         ai_solver = AISolver(AIStrength[selected_settings.strength.upper()])
+                        ai_alternate, ai_turn = ai_turn_configuration(selected_settings.mode)
                         configure_display(board.rows)
                         game_over_start_time = -1
                         game_state = "playing"
@@ -535,6 +560,8 @@ def main():
                     settings_start_rect = settings_rect(SETTINGS_START_POS, SETTINGS_START_SIZE)
                     strength_up_rect = settings_rect(STRENGTH_UP_POS, SETTING_ARROW_SIZE)
                     strength_down_rect = settings_rect(STRENGTH_DOWN_POS, SETTING_ARROW_SIZE)
+                    mode_up_rect = settings_rect(MODE_UP_POS, SETTING_ARROW_SIZE)
+                    mode_down_rect = settings_rect(MODE_DOWN_POS, SETTING_ARROW_SIZE)
 
                     if mine_up_rect.collidepoint(mouse_pos):
                         selected_settings = selected_settings.adjusted("mines", 1)
@@ -548,9 +575,14 @@ def main():
                         selected_settings = selected_settings.adjusted("strength", 1)
                     elif strength_down_rect.collidepoint(mouse_pos):
                         selected_settings = selected_settings.adjusted("strength", -1)
+                    elif mode_up_rect.collidepoint(mouse_pos):
+                        selected_settings = selected_settings.adjusted("mode", 1)
+                    elif mode_down_rect.collidepoint(mouse_pos):
+                        selected_settings = selected_settings.adjusted("mode", -1)
                     elif settings_start_rect.collidepoint(mouse_pos):
                         board = selected_settings.create_board()
                         ai_solver = AISolver(AIStrength[selected_settings.strength.upper()])
+                        ai_alternate, ai_turn = ai_turn_configuration(selected_settings.mode)
                         configure_display(board.rows)
                         game_over_start_time = -1
                         game_state = "playing"

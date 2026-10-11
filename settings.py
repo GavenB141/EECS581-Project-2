@@ -7,6 +7,7 @@ from dataclasses import dataclass, replace
 
 BOARD_SIZES = (8, 10, 12)
 AI_STRENGTHS = ("easy", "medium", "hard")
+GAME_MODES = ("interactive", "auto", "none")
 MAX_HINTS = 10
 MAX_TIME_SECONDS = 1800
 
@@ -20,6 +21,7 @@ class GameSettings:
     max_hints: int = 0
     time_limit_seconds: int = 0
     strength: str = "hard"
+    mode: str = "auto"
 
     @property
     def mine_limit(self):
@@ -34,6 +36,8 @@ class GameSettings:
             raise ValueError("Settings must be integers")
         if self.strength not in AI_STRENGTHS:
             raise ValueError("AI strength must be easy, medium, or hard")
+        if self.mode not in GAME_MODES:
+            raise ValueError("Game mode must be interactive, auto, or none")
         if self.board_size not in BOARD_SIZES:
             raise ValueError("Board size must be 8, 10, or 12")
         if not 1 <= self.mines <= self.mine_limit:
@@ -57,6 +61,10 @@ class GameSettings:
             index = AI_STRENGTHS.index(self.strength)
             index = max(0, min(len(AI_STRENGTHS) - 1, index + direction))
             return replace(self, strength=AI_STRENGTHS[index])
+        if field == "mode":
+            index = GAME_MODES.index(self.mode)
+            index = max(0, min(len(GAME_MODES) - 1, index + direction))
+            return replace(self, mode=GAME_MODES[index])
         limits = {"mines": (1, self.mine_limit, 1),
                   "max_hints": (0, MAX_HINTS, 1),
                   "time_limit_seconds": (0, MAX_TIME_SECONDS, 60)}

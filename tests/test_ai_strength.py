@@ -35,6 +35,17 @@ class AIStrengthTests(unittest.TestCase):
                 GameSettings(strength=strength)
         self.assertEqual(AI_STRENGTHS, ("easy", "medium", "hard"))
 
+    def test_mode_defaults_and_bounds(self):
+        self.assertEqual(GameSettings().mode, "auto")
+        self.assertEqual(GameSettings(mode="none").adjusted("mode", -1).mode, "auto")
+        self.assertEqual(GameSettings(mode="interactive").adjusted("mode", 1).mode, "auto")
+        self.assertEqual(GameSettings(mode="interactive").adjusted("mode", -1).mode, "interactive")
+        self.assertEqual(GameSettings(mode="auto").adjusted("mode", 1).mode, "none")
+        self.assertEqual(GameSettings(mode="auto").adjusted("mode", -1).mode, "interactive")
+        for mode in ("unknown", "AUTO", 1):
+            with self.subTest(mode=mode), self.assertRaises(ValueError):
+                GameSettings(mode=mode)
+
     def test_solver_dispatches_to_selected_strategy(self):
         strategies = {
             AIStrength.EASY: "run_easy",
