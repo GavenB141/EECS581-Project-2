@@ -511,6 +511,80 @@ def draw_game_over(board):
 
 # Function outline sourced from pygame tutorial
 # core drawing loop
+
+# date created : 10/11/26 
+# shows the statistics describing the ai perfomance 
+def draw_ai_statistics(board , ai_solver):
+    if ai_solver is None:
+        return
+
+    difficulty = ai_solver.strength.name
+    result = "WIN" if board.is_game_won else "LOSS"
+    turns = ai_solver.turns_taken
+
+    safe_tiles_revealed = sum(
+        1
+        for row in board.tiles
+        for tile in row
+        if tile.is_revealed and not tile.is_mine
+    )
+
+    mines_flagged = sum(
+        1
+        for row in board.tiles
+        for tile in row
+        if tile.is_flagged and tile.is_mine
+    )
+
+    elapsed = get_elapsed_time(board)
+
+    stats = [
+        f"AI: {difficulty}",
+        f"RESULT: {result}",
+        f"TURNS: {turns}",
+        f"REVEALED: {safe_tiles_revealed}",
+        f"MINES FLAGGED: {mines_flagged}",
+        f"TIME: {format_timer(elapsed)}"
+    ]
+
+    font = pg.font.Font(None , 6 * SCALE)
+
+    right_e = (SCREEN_WIDTH - 18) * SCALE
+    y = 58 * SCALE
+
+    for line in stats:
+        text = font.render(line , True , (0,0,0))
+        text_rect = text.get_rect(topright=(right_e,y))
+        screen.blit(text,text_rect)
+        y += 8 * SCALE
+        
+        
+
+
+# date created : 10/11/26
+# draws the elapsed game time in seconds at the top of the game screen
+def draw_game_timer(start_time , end_time=None):
+    if start_time is None:
+        return
+    # f the game has ended ... use the saved ending time so the timer freezes
+    if end_time is not None:
+        elapsed_ms = end_time - start_time
+    else:
+        elapsed_ms = pg.time.get_ticks() - start_time
+    elapsed_seconds = max(0 , elapsed_ms // 1000)
+    minutes = elapsed_seconds // 60
+    seconds = elapsed_seconds % 60
+    timer_text = f"{minutes:02}:{seconds:02}"
+    font = pg.font.Font(None, 8 * SCALE)
+    label_surface = font.render("TIME" , True , (255,255,255))
+    time_surface = font.render(timer_text , True , (255,255,255))
+
+    center_x = SCREEN_WIDTH * SCALE // 2
+    label_rect = label_surface.get_rect(center=(center_x , 17 * SCALE))
+    time_rect = time_surface.get_rect(center=(center_x , 40 * SCALE))
+
+    screen.blit(label_surface , label_rect)
+    screen.blit(time_surface , time_rect)
 def main():
     # pygame setup
     pg.init()
@@ -521,6 +595,9 @@ def main():
     clock = pg.time.Clock()
     running = True
     game_over_start_time = -1
+    # game timerr values
+    game_start_time = None
+    game_end_time = None
 
     init_sprites()
 
@@ -565,6 +642,9 @@ def main():
                         ai_alternate, ai_turn = ai_turn_configuration(selected_settings.mode)
                         configure_display(board.rows)
                         game_over_start_time = -1
+                        # start fresh game clock
+                        game_start_time = pg.time.get_ticks()
+                        game_end_time = None
                         game_state = "playing"
                     elif event.button == 1 and settings_button_rect.collidepoint(mouse_pos):
                         game_state = "settings"
@@ -608,6 +688,9 @@ def main():
                         ai_alternate, ai_turn = ai_turn_configuration(selected_settings.mode)
                         configure_display(board.rows)
                         game_over_start_time = -1
+                        # start fresh game clock 
+                        game_start_time = pg.time.get_ticks()
+                        game_end_time = None
                         game_state = "playing"
                 # on click, get the cords of the tile that was clicked
                 elif game_state == "playing":
@@ -641,6 +724,8 @@ def main():
                         game_state = "game_over"
                         # record game over start time
                         game_over_start_time = pg.time.get_ticks()
+                        if game_end_time is None:
+                            game_end_time = pg.time.get_ticks() 
             elif event.type == pg.KEYDOWN and game_state == "settings" and event.key == pg.K_ESCAPE:
                 game_state = "menu"
 
@@ -659,6 +744,8 @@ def main():
                 game_state = "game_over"
                 # record game over start time
                 game_over_start_time = pg.time.get_ticks()
+                if game_end_time is None:
+                    game_end_time = pg.time.get_ticks() 
 
 
         # draw whichever screen is currently active
@@ -681,6 +768,7 @@ def main():
             draw_face(board)
             draw_elapsed_time(board)
 
+            draw_game_timer(game_start_time)
         # during gameover, display everything minus the cursor, and plus the blinking game over panel
         elif game_state == "game_over":
             # draw background
@@ -695,6 +783,10 @@ def main():
             draw_face(board)
             draw_elapsed_time(board)
 
+            draw_game_timer(game_start_time , game_end_time)
+
+            # show ai perfomance statistics after the game ends 
+            draw_ai_statistics(board , ai_solver)
             # calculate elapsed time from game over start time
             elapsed_time = pg.time.get_ticks() - game_over_start_time
 
