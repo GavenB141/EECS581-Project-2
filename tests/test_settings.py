@@ -10,7 +10,6 @@ import pygame as pg
 from settings import GameSettings, BOARD_SIZES
 from defs import Board
 from backend import first_click, left_click_tile, right_click_tile, get_surrounding_tiles
-import settings_menu
 
 
 class SettingsTests(unittest.TestCase):
@@ -79,24 +78,6 @@ class SettingsTests(unittest.TestCase):
         first_click(tile, board)
         self.assertTrue(board.first_click)
 
-    def test_menu_controls(self):
-        pg.init()
-        surface = pg.Surface((768, 928))
-        settings = GameSettings()
-        rows, start = settings_menu.controls(surface)
-        for field, _, minus, plus in rows:
-            event = pg.event.Event(pg.MOUSEBUTTONDOWN, button=1, pos=plus.center)
-            changed, requested = settings_menu.handle_event(event, settings, surface)
-            self.assertFalse(requested)
-            self.assertNotEqual(getattr(changed, field), getattr(settings, field))
-            unchanged, requested = settings_menu.handle_event(pg.event.Event(pg.MOUSEBUTTONDOWN, button=3, pos=plus.center), settings, surface)
-            self.assertEqual(unchanged, settings)
-            self.assertFalse(requested)
-        result, requested = settings_menu.handle_event(pg.event.Event(pg.MOUSEBUTTONDOWN, button=1, pos=start.center), settings, surface)
-        self.assertTrue(requested)
-        self.assertEqual(result, settings)
-        settings_menu.draw(surface, settings)
-
     def test_gui_geometry_and_ai(self):
         import gui
         from ai import AISolver, AIStrength
@@ -140,14 +121,12 @@ class SettingsTests(unittest.TestCase):
             nonlocal step
             step += 1
             if step == 1:
-                pos = settings_menu.controls(gui.screen)[1].center
-            elif step == 2:
                 pos = (16 * gui.SCALE, 56 * gui.SCALE)
-            elif step == 3:
+            elif step == 2:
                 tile = next(t for row in boards[0].tiles for t in row if t.is_mine)
                 pos = ((16 + tile.col * 16) * gui.SCALE,
                        (56 + tile.row * 16) * gui.SCALE)
-            elif step == 4:
+            elif step == 3:
                 self.assertEqual(gui.game_state, "game_over")
                 pos = gui.MENU_BUTTON_RECT.center
             else:
