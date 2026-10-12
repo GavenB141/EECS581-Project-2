@@ -30,12 +30,15 @@ MINE_UP_POS = (79, 59)
 MINE_DOWN_POS = (88, 59)
 BOARD_UP_POS = (79, 87)
 BOARD_DOWN_POS = (88, 87)
+TIME_UP_POS = (79, 111)
+TIME_DOWN_POS = (88, 111)
 STRENGTH_UP_POS = (79, 132)
 STRENGTH_DOWN_POS = (88, 132)
 MODE_UP_POS = (79, 151)
 MODE_DOWN_POS = (88, 151)
 MINE_COUNT_DIGITS_POS = (102, 60)
 BOARD_SIZE_VALUE_POS = (102, 88)
+TIME_LIMIT_VALUE_POS = (102, 112)
 STRENGTH_VALUE_POS = (102, 127)
 MODE_VALUE_POS = (102, 146)
 # The strength glyphs have different source baselines; align their visible ink.
@@ -329,6 +332,10 @@ def draw_settings_page():
     )
     draw_red_setting_value(str(selected_settings.mines), MINE_COUNT_DIGITS_POS)
     draw_red_setting_value(f"{selected_settings.board_size}x{selected_settings.board_size}", BOARD_SIZE_VALUE_POS)
+    draw_red_setting_value(
+        format_timer(selected_settings.time_limit_seconds),
+        TIME_LIMIT_VALUE_POS,
+    )
     strength_sprite = sprites[f"strength_{selected_settings.strength}"]
     strength_pos = settings_rect(STRENGTH_VALUE_POS, (1, 1)).topleft
     strength_pos = (
@@ -354,6 +361,16 @@ def draw_red_setting_value(value, position):
             separator = pg.font.Font(None, 8 * SCALE).render(character, True, (255, 0, 0))
             screen.blit(separator, separator.get_rect(center=glyph_rect.center))
         x += 8
+
+def format_timer(seconds):
+    minutes, seconds = divmod(seconds, 60)
+    return f"{minutes:02d}:{seconds:02d}"
+
+def draw_elapsed_time(board):
+    font = pg.font.Font(None, 8 * SCALE)
+    text = font.render(format_timer(get_elapsed_time(board)), True, (255, 255, 255))
+    position = ((SCREEN_WIDTH // 2 + 16) * SCALE, 18 * SCALE)
+    screen.blit(text, text.get_rect(topright=position))
 
 def configure_display(size=10):
     """Resize the board area and overlay hit boxes together for each new game."""
@@ -589,6 +606,8 @@ def main():
                     mine_down_rect = settings_rect(MINE_DOWN_POS, SETTING_ARROW_SIZE)
                     board_up_rect = settings_rect(BOARD_UP_POS, SETTING_ARROW_SIZE)
                     board_down_rect = settings_rect(BOARD_DOWN_POS, SETTING_ARROW_SIZE)
+                    time_up_rect = settings_rect(TIME_UP_POS, SETTING_ARROW_SIZE)
+                    time_down_rect = settings_rect(TIME_DOWN_POS, SETTING_ARROW_SIZE)
                     settings_start_rect = settings_rect(SETTINGS_START_POS, SETTINGS_START_SIZE)
                     strength_up_rect = settings_rect(STRENGTH_UP_POS, SETTING_ARROW_SIZE)
                     strength_down_rect = settings_rect(STRENGTH_DOWN_POS, SETTING_ARROW_SIZE)
@@ -603,6 +622,10 @@ def main():
                         selected_settings = selected_settings.adjusted("board_size", 1)
                     elif board_down_rect.collidepoint(mouse_pos):
                         selected_settings = selected_settings.adjusted("board_size", -1)
+                    elif time_up_rect.collidepoint(mouse_pos):
+                        selected_settings = selected_settings.adjusted("time_limit_seconds", 1)
+                    elif time_down_rect.collidepoint(mouse_pos):
+                        selected_settings = selected_settings.adjusted("time_limit_seconds", -1)
                     elif strength_up_rect.collidepoint(mouse_pos):
                         selected_settings = selected_settings.adjusted("strength", 1)
                     elif strength_down_rect.collidepoint(mouse_pos):
@@ -638,10 +661,7 @@ def main():
                             tile = get_tile_at_coords((row, col), board)
                             # for left-click, if first click, then do mine blocking logic, and otherwise reveal the clicked tile and surrounding tiles
                             if (event.button == LEFT_CLICK):
-                                if(not board.first_click):
-                                    first_click(tile, board)
-                                else:
-                                    left_click_tile(tile, board)
+                                handle_left_click(tile, board)
 
                             # for right-click, execute flagging logic
                             if (event.button == RIGHT_CLICK):
@@ -664,11 +684,13 @@ def main():
         # now take ai input and detect game overs regardless of real input
         if game_state == "playing":
             assert board is not None
-            if ai_turn:
+            check_time(board)
+            if not (board.is_game_lost or board.is_game_won) and ai_turn:
                 assert ai_solver is not None
                 finished = ai_solver.run(board)
                 if finished and ai_alternate:
                     ai_turn = False
+                check_time(board)
             # detect game over state change
             if(board.is_game_lost or board.is_game_won):
                 game_state = "game_over"
@@ -696,6 +718,7 @@ def main():
             draw_status(board)
 
             draw_face(board)
+            draw_elapsed_time(board)
 
             draw_game_timer(game_start_time)
         # during gameover, display everything minus the cursor, and plus the blinking game over panel
@@ -710,6 +733,7 @@ def main():
             draw_status(board)
 
             draw_face(board)
+            draw_elapsed_time(board)
 
             draw_game_timer(game_start_time , game_end_time)
 

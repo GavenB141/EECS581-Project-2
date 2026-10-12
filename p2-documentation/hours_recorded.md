@@ -20,5 +20,16 @@
 | :--- | :--- | ---: |
 | 9.28.26 | Team Meeting | 1 |
 | 10.10.26 | Extended function "run" and added functions "get_hidden", "select_random" and "run_easy" | 1.5 |
+| 10.11.26 | Added Logic for a Time Limit Option in "defs.py" and "backend.py" | 1.5 |
 
+## Ashton Spencer
+| Date | Item | Hours |
+| :--- | :--- | ---: |
+| 9.28.26 | Team Meeting | 1 |
+| 10.10.26 | Medium Ai Solver | 3 |
 
+## Cooper Fish
+| Date | Item | Hours |
+| :--- | :--- | ---: |
+| 9.28.26 | Team Meeting | 1 |
+| 10.10.26 | Hard Ai Solver | 4 |
