@@ -512,6 +512,54 @@ def draw_game_over(board):
 # Function outline sourced from pygame tutorial
 # core drawing loop
 
+# date created : 10/11/26 
+# shows the statistics describing the ai perfomance 
+def draw_ai_statistics(board , ai_solver):
+    if ai_solver is None:
+        return
+
+    difficulty = ai_solver.strength.name
+    result = "WIN" if board.is_game_won else "LOSS"
+    turns = ai_solver.turns_taken
+
+    safe_tiles_revealed = sum(
+        1
+        for row in board.tiles
+        for tile in row
+        if tile.is_revealed and not tile.is_mine
+    )
+
+    mines_flagged = sum(
+        1
+        for row in board.tiles
+        for tile in row
+        if tile.is_flagged and tile.is_mine
+    )
+
+    elapsed = get_elapsed_time(board)
+
+    stats = [
+        f"AI: {difficulty}",
+        f"RESULT: {result}",
+        f"TURNS: {turns}",
+        f"REVEALED: {safe_tiles_revealed}",
+        f"MINES FLAGGED: {mines_flagged}",
+        f"TIME: {format_timer(elapsed)}"
+    ]
+
+    font = pg.font.Font(None , 6 * SCALE)
+
+    right_e = (SCREEN_WIDTH - 18) * SCALE
+    y = 58 * SCALE
+
+    for line in stats:
+        text = font.render(line , True , (0,0,0))
+        text_rect = text.get_rect(topright=(right_e,y))
+        screen.blit(text,text_rect)
+        y += 8 * SCALE
+        
+        
+
 
 # date created : 10/11/26
 # draws the elapsed game time in seconds at the top of the game screen
@@ -737,6 +785,8 @@ def main():
 
             draw_game_timer(game_start_time , game_end_time)
 
+            # show ai perfomance statistics after the game ends 
+            draw_ai_statistics(board , ai_solver)
             # calculate elapsed time from game over start time
             elapsed_time = pg.time.get_ticks() - game_over_start_time
 
