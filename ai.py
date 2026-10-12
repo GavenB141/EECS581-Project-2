@@ -26,6 +26,7 @@ class AISolver:
     def __init__(self, strength: AIStrength):
         self.strength = strength
         self._delay = 0
+        self.turns_taken = 0
 
     # run the AI on the board for one tick, returning True if its turn is finished
     def run(self, board: Board):
@@ -37,6 +38,7 @@ class AISolver:
         self._delay -= 1
         if self._delay != 0:
             return False
+        self.turns_taken += 1
         # takes the next turn with the chosen strength level
         if self.strength == AIStrength.EASY:
             self.run_easy(board)
