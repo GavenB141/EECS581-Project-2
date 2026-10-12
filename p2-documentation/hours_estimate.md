@@ -11,3 +11,4 @@ During our 9/28 meeting, much like for our first project, we broke the project u
 | New settings menu rendering | Jocelyn | 2 |
 | New settings menu logic | Anthony | 3.5 |
 | Time limit feature | Max | 2 |
+| Testing and AI performance statistics | Sakthi | 3 |
