@@ -7,7 +7,7 @@ from ai import *
 from pathlib import Path
 from settings import GameSettings
 
-SCALE = 4
+SCALE = 3
 SCREEN_WIDTH = 192 # ten 16px tiles + four 8px tiles = 192
 SCREEN_HEIGHT = 232 # ten 16px tiles + nine 8px tiles = 232
 
