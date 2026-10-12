@@ -33,3 +33,11 @@
 | :--- | :--- | ---: |
 | 9.28.26 | Team Meeting | 1 |
 | 10.10.26 | Hard Ai Solver | 4 |
+
+## Sakthi Sivasubramanian 
+| Date | Item | Hours | 
+| :--- | :--- | ---: |
+| 10.11.26 | testing / test suite | Sakthi | 2 | 
+| 10.11.26 | game clock  | Sakthi | 1 | 
+| 10.11.26 | ai perfomance statistics  | Sakthi | 1 | 
+
