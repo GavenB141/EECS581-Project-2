@@ -27,3 +27,9 @@
 | :--- | :--- | ---: |
 | 9.28.26 | Team Meeting | 1 |
 | 10.10.26 | Medium Ai Solver | 3 |
+
+## Cooper Fish
+| Date | Item | Hours |
+| :--- | :--- | ---: |
+| 9.28.26 | Team Meeting | 1 |
+| 10.10.26 | Hard Ai Solver | 4 |
